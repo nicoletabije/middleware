@@ -5,9 +5,8 @@ const pgp = require("pg-promise")(/* Initialization Options */);
 
 router.post("/", async (req, res) => {
   const patient = req.body.patient;
-  const encounter = req.body.encounter;
   const doctor = req.body.doctor;
-  const ros = req.body.ros;
+  const medication = req.body.medication;
   var query = `
         WITH patient_id AS (
             SELECT pa.id as patient_id,
@@ -30,18 +29,12 @@ router.post("/", async (req, res) => {
             SELECT 1 as equalizer, id as doctor_id
             FROM doctor
             WHERE LOWER(doctor_id) = LOWER($11) 
-        ), encounter_id AS (
-            SELECT id FROM
-            (
-                SELECT patient_id, doctor_id
-                FROM doctor_id d LEFT JOIN patient_id p ON p.equalizer = d.equalizer
-            ) pd LEFT JOIN encounter e ON e.patient = pd.patient_id AND e.doctor = pd.doctor_id
-             WHERE CAST(e.date_visited AS DATE) = CAST($12 AS DATE) 
-        ) INSERT INTO ros(encounter, fever, weight_loss, poor_appetite, fatigue, heart_palpitation, shortness_of_breath, chest_pain, nausea, abdominal_pain, vomiting, diarrhea)
-         SELECT id, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23 
-         FROM encounter_id
-         RETURNING id
-    `;
+        ) INSERT INTO medications(form, note, start_date, end_date, dispense_interval, dose_and_unit, medicine_name, patient, doctor)
+            SELECT $12, $13, CAST(SUBSTRING($14,0,11) AS DATE), CAST(SUBSTRING($15,0,11) AS DATE), $16, $17, $18, patient_id, doctor_id FROM
+            patient_id p LEFT JOIN doctor_id d ON p.equalizer = d.equalizer
+        RETURNING id
+  `;
+
   var params = [
     patient.name.given,
     patient.name.middle,
@@ -54,22 +47,18 @@ router.post("/", async (req, res) => {
     patient.address.city,
     patient.address.line,
     doctor.qualification.id,
-    encounter.date_visited ?? "",
-    ros.fever,
-    ros.weight_loss,
-    ros.poor_appetite,
-    ros.fatigue,
-    ros.heart_palpitation,
-    ros.shortness_of_breath,
-    ros.chest_pain,
-    ros.nausea,
-    ros.abdominal_pain,
-    ros.vomiting,
-    ros.diarrhea,
+    medication.form,
+    medication.note,
+    medication.start_date,
+    medication.end_date,
+    medication.dispense_interval,
+    medication.dose,
+    medication.medicine_name,
   ];
-  console.log(pgp.as.format(query, params));
 
+  console.log(pgp.as.format(query, params));
   var result = await db.query(query, params);
+
   res.json(result.rows[0]?.id ?? null);
 });
 

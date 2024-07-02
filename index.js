@@ -13,6 +13,10 @@ const userService = require("./services/user");
 const careplanService = require("./services/careplan");
 const issuesService = require("./services/issues");
 const rosService = require("./services/ros");
+const vitalsAndBiometricsService = require("./services/vitals-and-biometrics");
+const signsAndSymptomsService = require("./services/signs-and-symptoms");
+const allergyService = require("./services/allergy");
+const medicationService = require("./services/medication");
 app.use(cors({ origin: true }));
 app.use(bodyParser.json());
 
@@ -22,6 +26,10 @@ app.use("/user", userService);
 app.use("/careplan", careplanService);
 app.use("/issues", issuesService);
 app.use("/ros", rosService);
+app.use("/allergy", allergyService);
+app.use("/medication", medicationService);
+app.use("/signs-and-symptoms", signsAndSymptomsService);
+app.use("/vitals-and-biometrics", vitalsAndBiometricsService);
 
 app.listen(config.port || 2000, () => {
   console.log(`Listening on port ${config.port || 2000}`);

@@ -7,10 +7,31 @@ router.post("/", async (req, res) => {
   const patient = req.body.patient;
   const encounter = req.body.encounter;
   const doctor = req.body.doctor;
-  const careplan = req.body.careplan;
-  var query =
-    `
-        WITH patient_id AS (
+  const vitalsAndBiometrics = {
+    vitals: req.body.vitals,
+    biometrics: req.body.biometrics,
+  };
+
+  var resource_type = [];
+  var type = [];
+  var value = [];
+  var unit = [];
+
+  Object.keys(vitalsAndBiometrics).map((rt) => {
+    Object.keys(vitalsAndBiometrics[rt]).map((t) => {
+      resource_type.push(rt);
+      type.push(t);
+      value.push(vitalsAndBiometrics[rt][t].value);
+      unit.push(vitalsAndBiometrics[rt][t].unit);
+    });
+  });
+
+  var rt = arrayToStringWithQuotes(resource_type);
+  var t = arrayToStringWithQuotes(type);
+  var val = arrayToStringWithQuotes(value);
+  var un = arrayToStringWithQuotes(unit);
+
+  var query = `WITH patient_id AS (
             SELECT pa.id as patient_id,
                 1 AS equalizer 
             FROM patient pa
@@ -31,37 +52,20 @@ router.post("/", async (req, res) => {
             SELECT 1 as equalizer, id as doctor_id
             FROM doctor
             WHERE LOWER(doctor_id) = LOWER($11) 
-        ), end_date AS (
-          SELECT 
-              row_number() OVER () AS row_number,
-              value
-          FROM unnest(` +
-    arrayToStringWithQuotes(careplan.end_date) +
-    `) WITH ORDINALITY AS t(value, ordinality)
-        ), care_type AS (
-          SELECT 
-              row_number() OVER () AS row_number,
-              value
-          FROM unnest(` +
-    arrayToStringWithQuotes(careplan.care_plan_type) +
-    `) WITH ORDINALITY AS t(value, ordinality)
-        ),description AS (
-          SELECT 
-              row_number() OVER () AS row_number,
-              value
-          FROM unnest(` +
-    arrayToStringWithQuotes(careplan.description) +
-    `) WITH ORDINALITY AS t(value, ordinality)
-        ), data_select AS (
-          SELECT patient_id, doctor_id, 'Careplan', CAST($12 AS DATE), CAST(ed.value AS DATE) as end_date, 'Careplan', d.value as description_description, ct.value as type
-          FROM end_date ed LEFT JOIN care_type ct ON ct.row_number = ed.row_number LEFT JOIN description d ON d.row_number = ct.row_number
-          CROSS JOIN (select patient_id, doctor_id FROM doctor_id d LEFT JOIN patient_id p ON p.equalizer = d.equalizer) pd
-        )
-         INSERT INTO careplan(patient, doctor, title, start_date, end_date, description_title, description_description, type)
-            SELECT *  FROM
-            data_select
-        RETURNING id
-  `;
+        ), encounter_id AS (
+            SELECT id, patient_id, doctor_id FROM
+            (
+                SELECT patient_id, doctor_id
+                FROM doctor_id d LEFT JOIN patient_id p ON p.equalizer = d.equalizer
+            ) pd LEFT JOIN encounter e ON e.patient = pd.patient_id AND e.doctor = pd.doctor_id
+             WHERE CAST(e.date_visited AS DATE) = CAST($12 AS DATE) 
+        )INSERT INTO observation (patient, doctor, encounter_id, resource_type, type, value, unit)
+        SELECT patient_id, doctor_id, id, resource_type, type, value, unit
+        FROM (SELECT * FROM encounter_id) en CROSS JOIN (
+            SELECT unnest(${rt}) AS resource_type, unnest(${t}) AS type, unnest(${val}) AS value, unnest(${un}) AS unit
+        ) di
+         returning id
+    `;
 
   var params = [
     patient.name.given,
@@ -75,11 +79,12 @@ router.post("/", async (req, res) => {
     patient.address.city,
     patient.address.line,
     doctor.qualification.id,
-    careplan.start_date,
+    encounter.date_visited,
   ];
 
+  console.log(pgp.as.format(query, params));
   var result = await db.query(query, params);
-  res.json(result.rows[0]?.id ?? null);
+  res.json(result.rows ?? null);
 });
 
 function arrayToStringWithQuotes(arr) {
