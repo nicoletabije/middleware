@@ -17,6 +17,7 @@ const vitalsAndBiometricsService = require("./services/vitals-and-biometrics");
 const signsAndSymptomsService = require("./services/signs-and-symptoms");
 const allergyService = require("./services/allergy");
 const medicationService = require("./services/medication");
+const fullService = require("./services/full");
 app.use(cors({ origin: true }));
 app.use(bodyParser.json());
 
@@ -30,6 +31,7 @@ app.use("/allergy", allergyService);
 app.use("/medication", medicationService);
 app.use("/signs-and-symptoms", signsAndSymptomsService);
 app.use("/vitals-and-biometrics", vitalsAndBiometricsService);
+app.use("/full", fullService);
 
 app.listen(config.port || 2000, () => {
   console.log(`Listening on port ${config.port || 2000}`);
