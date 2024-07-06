@@ -3,8 +3,10 @@ const express = require("express");
 const router = express.Router();
 const pgp = require("pg-promise")(/* Initialization Options */);
 
+const { getPatientId } = require("../utils/patient.utils");
 router.post("/", async (req, res) => {
   const patient = req.body.patient;
+  getPatientId(patient);
   const encounter = req.body.encounter;
   const doctor = req.body.doctor;
   const careplan = req.body.careplan;
@@ -17,7 +19,7 @@ router.post("/", async (req, res) => {
             LEFT JOIN person pe
             ON pa.patient_id = pe.id
             WHERE LOWER(pe.first_name) = LOWER($1)
-            AND LOWER(pe.middle_name) = LOWER($2)
+            AND LOWER(pe.middle_name) = LOWER($2) OR $2 IS NULL
             AND LOWER(pe.last_name) = LOWER($3)
             AND pe.birthdate = $4
             AND pe.male = CAST($5 AS BOOLEAN)
@@ -79,7 +81,7 @@ router.post("/", async (req, res) => {
   ];
 
   var result = await db.query(query, params);
-  res.json(result.rows[0]?.id ?? null);
+  res.json(result.rows[0]?.id ?? []);
 });
 
 function arrayToStringWithQuotes(arr) {

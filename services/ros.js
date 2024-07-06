@@ -4,6 +4,7 @@ const router = express.Router();
 const pgp = require("pg-promise")(/* Initialization Options */);
 
 router.post("/", async (req, res) => {
+  console.log(req.body);
   res.json(req.body);
 });
 

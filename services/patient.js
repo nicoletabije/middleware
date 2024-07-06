@@ -3,18 +3,20 @@ const express = require("express");
 const router = express.Router();
 const pgp = require("pg-promise")(/* Initialization Options */);
 
+const { getPatientId } = require("../utils/patient.utils");
 router.post("/", async (req, res) => {
   const patient = req.body.patient;
+  getPatientId(patient);
   console.log(req.body);
   var query = `
     SELECT 
       person.id
     FROM person
     WHERE LOWER(person.first_name) = LOWER($1)
-      AND LOWER(person.middle_name) = LOWER($2)
+      AND LOWER(person.middle_name) = LOWER($2) OR $2 IS NULL
       AND LOWER(person.last_name) = LOWER($3)
       AND person.birthdate = $4
-      AND person.male = $5
+      AND person.male = CAST($5 AS BOOLEAN)
     ORDER BY SIMILARITY(LOWER(person.contact_number), LOWER($6)) DESC
       , SIMILARITY(LOWER(person.postal_code), LOWER($7)) DESC
       , SIMILARITY(LOWER(person.municipality), LOWER($8)) DESC
@@ -34,6 +36,7 @@ router.post("/", async (req, res) => {
     patient.address.city,
     patient.address.line,
   ];
+  console.log(pgp.as.format(query, params));
   var result = await db.query(query, params);
 
   if (result.rows.length == 0) {
@@ -75,6 +78,7 @@ router.post("/", async (req, res) => {
       patient.telecom,
       patient.birthDate,
     ];
+    console.log(pgp.as.format(query, params));
     result = await db.query(query, params);
     const id = result.rows[0].id;
 
@@ -97,10 +101,10 @@ router.post("/patient-data-after", async (req, res) => {
     LEFT JOIN person
       ON patient.patient_id = person.id
     WHERE LOWER(person.first_name) = LOWER($1)
-      AND LOWER(person.middle_name) = LOWER($2)
+      AND LOWER(person.middle_name) = LOWER($2) OR $2 IS NULL
       AND LOWER(person.last_name) = LOWER($3)
       AND person.birthdate = $4
-      AND person.male = $5
+      AND person.male = CAST($5 AS BOOLEAN)
     ORDER BY SIMILARITY(LOWER(person.contact_number), LOWER($6)) DESC
       , SIMILARITY(LOWER(person.postal_code), LOWER($7)) DESC
       , SIMILARITY(LOWER(person.municipality), LOWER($8)) DESC
@@ -121,6 +125,7 @@ router.post("/patient-data-after", async (req, res) => {
     patient.address.line,
   ];
 
+  console.log(pgp.as.format(query, params));
   var result = await db.query(query, params);
 
   if (!result.rows.length) {
@@ -183,6 +188,7 @@ router.post("/patient-data-after", async (req, res) => {
   `;
 
   params = [patientid, lastDate, patientid, lastDate];
+  console.log(pgp.as.format(query, params));
   result = await db.query(query, params);
   const data = result.rows[0].encounter;
 

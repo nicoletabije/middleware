@@ -3,9 +3,11 @@ const express = require("express");
 const router = express.Router();
 const pgp = require("pg-promise")(/* Initialization Options */);
 
+const { getPatientId } = require("../utils/patient.utils");
 router.post("/", async (req, res) => {
   console.log(req.body);
   const patient = req.body.patient;
+  getPatientId(patient);
   const last_request = req.body.last_request;
   const doctor = req.body.doctor;
   var query = `
@@ -20,7 +22,7 @@ router.post("/", async (req, res) => {
             LEFT JOIN person pe ON pa.patient_id = pe.id
             WHERE
             LOWER(pe.first_name) = LOWER($1)
-            AND LOWER(pe.middle_name) = LOWER($2)
+            AND LOWER(pe.middle_name) = LOWER($2) OR $2 IS NULL
             AND LOWER(pe.last_name) = LOWER($3)
             AND pe.birthdate = $4
             AND pe.male = CAST($5 AS BOOLEAN)
@@ -42,7 +44,7 @@ router.post("/", async (req, res) => {
             FROM
             doctor
             WHERE
-            LOWER(doctor_id) != LOWER($11)
+            LOWER(doctor_id) = LOWER($11)
         ),
         encounter_id AS (
             SELECT
@@ -62,7 +64,7 @@ router.post("/", async (req, res) => {
             ) pd ON e.patient = pd.patient_id
             AND e.doctor = pd.doctor_id
             WHERE
-            CAST(e.date_visited AS DATE) > CAST($12 AS DATE)
+            CAST(e. date_visited AT TIME ZONE 'UTC' AT TIME ZONE '+16:00' AT TIME ZONE 'UTC' AT TIME ZONE '+16:00' AS DATE) > CAST($12 AS DATE)
         ),
         allergies_data AS (
             SELECT
@@ -85,15 +87,15 @@ router.post("/", async (req, res) => {
                 )
                 )
             ) AS allergies,
-            CAST(created_at AS DATE) AS created_at,
+            CAST(created_at AT TIME ZONE 'UTC' AT TIME ZONE '+16:00' AS DATE) AS created_at,
             patient AS patient_variable
             FROM
             allergies
             WHERE
-            CAST(created_at AS DATE) > CAST($12 AS DATE)
+            CAST(created_at AT TIME ZONE 'UTC' AT TIME ZONE '+16:00' AS DATE) > CAST($12 AS DATE)
             GROUP BY
             patient,
-            CAST(created_at AS DATE)
+            CAST(created_at AT TIME ZONE 'UTC' AT TIME ZONE '+16:00' AS DATE)
         ),
         careplan_data AS (
             SELECT
@@ -105,17 +107,17 @@ router.post("/", async (req, res) => {
                 json_build_object('code', code, 'system', system, 'start_date', start_date, 'end_date', end_date)
                 )
             ) AS careplan,
-            CAST(created_at AS DATE) AS created_at,
+            CAST(created_at AT TIME ZONE 'UTC' AT TIME ZONE '+16:00' AS DATE) AS created_at,
             patient AS patient_variable,
             doctor AS doctor_variable
             FROM
             careplan
             WHERE
-            CAST(created_at AS DATE) > CAST($12 AS DATE)
+            CAST(created_at AT TIME ZONE 'UTC' AT TIME ZONE '+16:00' AS DATE) > CAST($12 AS DATE)
             GROUP BY
             patient,
             doctor,
-            CAST(created_at AS DATE)
+            CAST(created_at AT TIME ZONE 'UTC' AT TIME ZONE '+16:00' AS DATE)
         ),
         ros_data AS (
             SELECT
@@ -151,14 +153,14 @@ router.post("/", async (req, res) => {
                 )
             ) AS ros,
             encounter AS encounter_id,
-            CAST(created_at AS DATE)
+            CAST(created_at AT TIME ZONE 'UTC' AT TIME ZONE '+16:00' AS DATE)
             FROM
             ros
             WHERE
-            CAST(created_at AS DATE) > CAST($12 AS DATE)
+            CAST(created_at AT TIME ZONE 'UTC' AT TIME ZONE '+16:00' AS DATE) > CAST($12 AS DATE)
             GROUP BY
             encounter,
-            CAST(created_at AS DATE)
+            CAST(created_at AT TIME ZONE 'UTC' AT TIME ZONE '+16:00' AS DATE)
         ),
         medications_data AS (
             SELECT
@@ -197,17 +199,17 @@ router.post("/", async (req, res) => {
                 )
                 )
             ) AS medications,
-            CAST(created_at AS DATE) AS created_at,
+            CAST(created_at AT TIME ZONE 'UTC' AT TIME ZONE '+16:00' AS DATE) AS created_at,
             patient AS patient_variable,
             doctor AS doctor_variable
             FROM
             medications
             WHERE
-            CAST(created_at AS DATE) > CAST($12 AS DATE)
+            CAST(created_at AT TIME ZONE 'UTC' AT TIME ZONE '+16:00' AS DATE) > CAST($12 AS DATE)
             GROUP BY
             patient,
             doctor,
-            CAST(created_at AS DATE)
+            CAST(created_at AT TIME ZONE 'UTC' AT TIME ZONE '+16:00' AS DATE)
         ),
         observation_data AS (
             SELECT
@@ -226,16 +228,16 @@ router.post("/", async (req, res) => {
                 )
             ) AS observation,
             encounter_id,
-            CAST(created_at AS DATE) AS created_at,
+            CAST(created_at AT TIME ZONE 'UTC' AT TIME ZONE '+16:00' AS DATE) AS created_at,
             patient AS patient_variable,
             doctor AS doctor_variable
             FROM
             observation
             WHERE
-            CAST(created_at AS DATE) > CAST($12 AS DATE)
+            CAST(created_at AT TIME ZONE 'UTC' AT TIME ZONE '+16:00' AS DATE) > CAST($12 AS DATE)
             GROUP BY
             encounter_id,
-            CAST(created_at AS DATE),
+            CAST(created_at AT TIME ZONE 'UTC' AT TIME ZONE '+16:00' AS DATE),
             patient,
             doctor
         )

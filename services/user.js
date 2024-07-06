@@ -15,6 +15,7 @@ router.post("/doctor-insert", async (req, res) => {
 
   var params = [doctorInfo.qualification.id];
 
+  console.log(pgp.as.format(query, params));
   var result = await db.query(query, params);
   if (result.rows.length == 0) {
     query = `
@@ -35,6 +36,7 @@ router.post("/doctor-insert", async (req, res) => {
       doctorInfo.qualification.id,
       doctorInfo.profession,
     ];
+    console.log(pgp.as.format(query, params));
     result = await db.query(query, params);
   }
   res.json({ id: result.rows[0].id });
